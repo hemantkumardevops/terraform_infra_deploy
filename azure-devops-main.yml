@@ -1,0 +1,40 @@
+# Pipeline trigger behavior
+trigger: 
+ branches:
+   include:
+     - main
+     - feature
+     - bugfix
+     - dev
+
+# Agent pool configuration (using your self-hosted agent)
+pool:
+  name: 'default'
+
+# Variables
+variables:
+  - group: backendconfiguration
+  # ResourceGroupName, StorageAccountName, ContainerName aapke variable group me hone chahiye
+
+# Pipeline stages calling the dynamic template
+stages:
+ - template: templates/env-template.yml
+   parameters:
+     stageName: 'Deploy_Dev'
+     envName: 'Dev'
+     backendKey: '$(KeyDev)' 
+     workDir: '$(System.DefaultWorkingDirectory)/environment/dev'
+     
+ - template: templates/env-template.yml
+   parameters:
+     stageName: 'Deploy_QA'
+     envName: 'QA'
+     backendKey: '$(KeyQA)'
+     workDir: '$(System.DefaultWorkingDirectory)/environment/qa'
+   
+ - template: templates/env-template.yml
+   parameters:
+     stageName: 'Deploy_Prod'
+     envName: 'Prod'
+     backendKey: '$(KeyProd)'
+     workDir: '$(System.DefaultWorkingDirectory)/environment/prod'

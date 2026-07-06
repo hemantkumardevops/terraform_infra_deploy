@@ -1,0 +1,62 @@
+parameters:
+  - name: stageName          # Dynamic stage name receive karne ke liye
+    type: string
+  - name: envName            # Environment name (dev, qa, prod)
+    type: string
+  - name: backendKey         # Har env ka apna state file name
+    type: string
+  - name: workDir            # Har env ka apna folder path
+    type: string
+
+stages:
+  - stage: ${{ parameters.stageName }} # <--- DYNAMIC STAGE NAME
+    displayName: Deploy Infrastructure - ${{ parameters.envName }}
+    jobs:
+      - job: terraformdeploy
+        displayName: Terraform Install & Run
+        steps:
+          # Step 1: Install Terraform on the agent
+          - task: TerraformInstaller@1
+            displayName: 'Install Terraform'
+            inputs:
+              terraformVersion: 'latest'
+          
+          # Step 2: Initialize Terraform with backend config
+          - task: TerraformTask@5
+            displayName: 'Terraform Init'
+            inputs:
+              provider: 'azurerm'
+              command: 'init'
+              workingDirectory: '${{ parameters.workDir }}' # <--- DYNAMIC PATH
+              commandOptions: '-reconfigure' 
+              backendServiceArm: 'SVC-ARM'
+              backendAzureRmResourceGroupName: '$(ResourceGroupName)' # Main pipeline se directly read hoga
+              backendAzureRmStorageAccountName: '$(StorageAccountName)'
+              backendAzureRmContainerName: '$(ContainerName)'
+              backendAzureRmKey: '${{ parameters.backendKey }}' # <--- DYNAMIC KEY
+
+          # Step 3: Validate the code
+          - task: TerraformTask@5
+            displayName: 'Terraform Validate'
+            inputs:
+              provider: 'azurerm'
+              command: 'validate'
+              workingDirectory: '${{ parameters.workDir }}'
+
+          # Step 4: Plan the deployment
+          - task: TerraformTask@5
+            displayName: 'Terraform Plan'
+            inputs:
+              provider: 'azurerm'
+              command: 'plan'
+              workingDirectory: '${{ parameters.workDir }}'
+              environmentServiceNameAzureRM: 'SVC-ARM'
+
+          # Step 5: Apply the deployment
+          - task: TerraformTask@5
+            displayName: 'Terraform Apply'
+            inputs:
+              provider: 'azurerm'
+              command: 'apply'
+              workingDirectory: '${{ parameters.workDir }}'
+              environmentServiceNameAzureRM: 'SVC-ARM'
